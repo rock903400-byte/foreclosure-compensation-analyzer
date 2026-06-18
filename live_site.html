@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>風的法拍土地監控</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary:      #0f172a;
+      --primary-light:#1e293b;
+      --accent:       #10b981;
+      --secondary:    #b45309;
+      --danger:       #ef4444;
+      --bg:           #f1f5f9;
+      --surface:      #ffffff;
+      --text-main:    #1e293b;
+      --text-muted:   #64748b;
+      --border:       #e2e8f0;
+      --radius:       12px;
+      --shadow:       0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      --shadow-lg:    0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang TC', 'Inter', -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding-bottom: 40px;
+      line-height: 1.5;
+    }
+
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 1rem;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: var(--shadow-lg);
+    }
+    .header-content {
+      max-width: 600px; margin: 0 auto;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; }
+    .brand span { color: var(--accent); }
+
+    .user-zone { display: flex; align-items: center; gap: 10px; }
+    .btn-login {
+      font-size: 0.75rem; font-weight: 700; padding: 5px 12px;
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+      color: white; border-radius: 8px; cursor: pointer;
+    }
+    .btn-login:hover { background: rgba(255,255,255,0.2); }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200; padding: 1rem;
+    }
+    .modal-box {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 2rem; width: 100%; max-width: 360px;
+      display: flex; flex-direction: column; gap: 1rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+    .modal-box h3 { font-size: 1.1rem; color: var(--primary); }
+    .modal-box p { font-size: 0.85rem; color: var(--text-muted); }
+    .modal-box input[type="email"] {
+      padding: 0.7rem 1rem; border: 1.5px solid var(--border);
+      border-radius: 10px; font-size: 0.95rem; width: 100%;
+    }
+    .modal-box input[type="email"]:focus { outline: none; border-color: var(--accent); }
+    .modal-btn-row { display: flex; gap: 0.5rem; }
+    .btn-confirm {
+      flex: 1; padding: 0.7rem; background: var(--primary); color: white;
+      border: none; border-radius: 10px; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+    }
+    .btn-confirm:hover { background: var(--primary-light); }
+    .btn-guest {
+      padding: 0.7rem 1rem; background: transparent; color: var(--text-muted);
+      border: 1px solid var(--border); border-radius: 10px; font-size: 0.85rem; cursor: pointer;
+    }
+
+    .setup-notice {
+      max-width: 600px; margin: 2rem auto; padding: 0 1rem;
+    }
+    .setup-box {
+      background: #fffbeb; border: 2px solid #fbbf24; border-radius: var(--radius);
+      padding: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;
+    }
+    .setup-box h3 { color: #92400e; font-size: 1rem; }
+    .setup-box p { font-size: 0.85rem; color: #78350f; }
+    .setup-box code {
+      background: #fef3c7; padding: 0.4rem 0.75rem; border-radius: 6px;
+      font-size: 0.8rem; word-break: break-all; display: block;
+    }
+
+    .filter-section { max-width: 600px; margin: 1.25rem auto; padding: 0 1rem; }
+    .tab-box { background: #f1f5f9; padding: 4px; border-radius: 100px; display: flex; gap: 4px; margin-bottom: 1rem; }
+    .tab-btn {
+      padding: 6px 18px; border-radius: 100px; border: none; font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; color: var(--text-muted); background: transparent; transition: 0.3s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tab-btn.active { background: var(--surface); color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .count-badge {
+      font-size: 0.7rem; background: #e2e8f0; color: var(--text-muted);
+      padding: 2px 6px; border-radius: 10px; min-width: 20px;
+    }
+    .tab-btn.active .count-badge { background: var(--primary); color: white; }
+
+    .list-info-bar {
+      max-width: 600px; margin: 0.5rem auto 1rem; padding: 0 1rem;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.85rem; font-weight: 700; color: var(--text-muted);
+    }
+    .stat-pill { background: white; padding: 4px 12px; border-radius: 100px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+    .stat-pill i { margin-right: 4px; color: var(--accent); }
+
+    .filter-grid {
+      background: var(--surface); padding: 1rem; border-radius: var(--radius);
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+      box-shadow: var(--shadow); border: 1px solid var(--border);
+    }
+    .f-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .f-group label { font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
+    .f-group input, .f-group select {
+      padding: 0.6rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem;
+    }
+    .f-full { grid-column: 1 / -1; }
+
+    .list { max-width: 600px; margin: 0 auto; padding: 0 1rem; display: grid; gap: 1rem; }
+    .item {
+      background: var(--surface); border-radius: var(--radius); padding: 1.25rem;
+      display: flex; flex-direction: column; gap: 1rem;
+      box-shadow: var(--shadow); border: 1px solid var(--border);
+      position: relative;
+    }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .county-tag { background: #f1f5f9; color: var(--primary); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; }
+    .roi-num { font-size: 1.6rem; font-weight: 900; line-height: 1; letter-spacing: -1px; }
+
+    .addr-area { padding: 0.8rem; background: #f8fafc; border-radius: 12px; border: 1px solid #edf2f7; cursor: pointer; }
+    .addr-main { font-weight: 800; font-size: 1rem; line-height: 1.4; }
+    .area-sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; font-weight: 600; }
+
+    .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .price-box { padding: 0.75rem; border-radius: 12px; background: #fff; border: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 2px; }
+    .p-lbl { font-size: 0.7rem; color: var(--text-muted); font-weight: 700; }
+    .p-val { font-size: 1.1rem; font-weight: 900; }
+
+    .btn-pdf { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 0.85rem; background: var(--primary); color: white; border-radius: 12px; text-decoration: none; font-size: 0.9rem; font-weight: 700; }
+    .tags-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .tag { font-size: 0.65rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; }
+    .tag-handover { background: #dcfce7; color: #166534; }
+    .tag-no-handover { background: #fee2e2; color: #991b1b; }
+    .tag-empty { background: #dbeafe; color: #1e40af; }
+    .tag-date { background: #fef3c7; color: #92400e; }
+
+    .paywall-card {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: white; padding: 2.5rem 1.5rem; border-radius: var(--radius);
+      text-align: center; display: flex; flex-direction: column; gap: 1.25rem;
+      margin: 1rem 0; border: 2px solid var(--secondary);
+      box-shadow: 0 10px 25px rgba(217, 119, 6, 0.2);
+    }
+    .paywall-card h3 { color: var(--secondary); font-size: 1.4rem; }
+
+    .skeleton { background: #e2e8f0; border-radius: 8px; animation: pulse 1.5s infinite ease-in-out; }
+    @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+    .sk-card { height: 200px; padding: 1.25rem; border-radius: var(--radius); background: #fff; display: flex; flex-direction: column; gap: 1rem; border: 1px solid var(--border); }
+    .sk-line { height: 1.2rem; width: 100%; }
+
+    #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 10px 24px; border-radius: 100px; font-size: 0.85rem; opacity: 0; transition: all 0.3s; z-index: 1000; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-content">
+    <div class="brand">法拍補償 <span>PRO</span></div>
+    <div class="user-zone" id="user-zone">
+      <div style="font-size:0.75rem; color:rgba(255,255,255,0.5)">載入中...</div>
+    </div>
+  </div>
+</header>
+
+<div id="login-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <h3><i class="fa-solid fa-user-circle" style="color:var(--accent)"></i> 輸入您的 Email</h3>
+    <p>請輸入您的 Google Email，系統將根據您的帳號顯示對應權限的資料。</p>
+    <input type="email" id="login-email" placeholder="your@gmail.com">
+    <div class="modal-btn-row">
+      <button class="btn-confirm" onclick="submitEmail()">確認登入</button>
+      <button class="btn-guest" onclick="closeLoginModal()">訪客模式</button>
+    </div>
+  </div>
+</div>
+
+<section class="filter-section">
+  <div class="tab-box">
+    <button id="t-gen" class="tab-btn active" onclick="tab('general')">一般 <span class="count-badge">0</span></button>
+    <button id="t-buy" class="tab-btn" onclick="tab('special')">應買 <span class="count-badge">0</span></button>
+  </div>
+  <div class="filter-grid">
+    <div class="f-group">
+      <label>縣市篩選</label>
+      <select id="f-county" onchange="render()"><option value="ALL">全部縣市</option></select>
+    </div>
+    <div class="f-group">
+      <label>排序方式</label>
+      <select id="f-sort" onchange="render()">
+        <option value="roiDesc">報酬率最高 ↓</option>
+        <option value="priceAsc">底價最低 ↑</option>
+      </select>
+    </div>
+    <div class="f-group f-full">
+      <label>搜尋關鍵字</label>
+      <input type="text" id="f-key" placeholder="輸入地址、路名..." oninput="debounceRender()">
+    </div>
+  </div>
+</section>
+
+<div class="list-info-bar">
+  <div class="stat-pill" id="result-count"><i class="fa-solid fa-list-ul"></i> 正在載入...</div>
+  <div style="font-size: 0.75rem; color: var(--text-muted);">
+    <i class="fa-solid fa-clock-rotate-left"></i> 即時更新
+  </div>
+</div>
+
+<section id="list" class="list"></section>
+<div id="toast">已複製地址</div>
+
+<script>
+  // ── 請填入您部署的 GAS Web App URL ──────────────────────────────────────────
+  var WEB_APP_URL = '';
+  // ────────────────────────────────────────────────────────────────────────────
+
+  var rawData = { general: [], special: [] };
+  var currentTab = 'general';
+  var userRole = 'visitor';
+  var isRestricted = true;
+  var userEmail = localStorage.getItem('auction_email') || '';
+
+  window.onload = function() {
+    if (!WEB_APP_URL) {
+      showSetupNotice();
+      return;
+    }
+    renderSkeleton();
+    loadData();
+  };
+
+  function showSetupNotice() {
+    document.getElementById('list').innerHTML = '';
+    var section = document.querySelector('.filter-section');
+    var notice = document.createElement('div');
+    notice.className = 'setup-notice';
+    notice.innerHTML =
+      '<div class="setup-box">' +
+        '<h3><i class="fa-solid fa-triangle-exclamation"></i> 尚未設定 Web App URL</h3>' +
+        '<p>請開啟此 HTML 檔案，在 &lt;script&gt; 最上方找到 <strong>WEB_APP_URL</strong> 並填入您的 GAS Web App 網址：</p>' +
+        '<code>var WEB_APP_URL = \'https://script.google.com/macros/s/YOUR_ID/exec\';</code>' +
+        '<p>部署步驟：GAS 編輯器 → 部署 → 新增部署 → 類型選「網頁應用程式」→ 存取權選「所有人」→ 複製網址貼上。</p>' +
+      '</div>';
+    section.parentNode.insertBefore(notice, section);
+    document.getElementById('result-count').innerHTML = '<i class="fa-solid fa-list-ul"></i> 未設定';
+  }
+
+  function renderSkeleton() {
+    document.getElementById('list').innerHTML = Array(3).fill(
+      '<div class="sk-card"><div class="skeleton sk-line"></div><div class="skeleton sk-line" style="width:60%"></div></div>'
+    ).join('');
+  }
+
+  function loadData() {
+    var url = WEB_APP_URL + (userEmail ? '?email=' + encodeURIComponent(userEmail) : '');
+    fetch(url)
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(onDataLoaded)
+      .catch(function(err) {
+        document.getElementById('list').innerHTML =
+          '<div style="text-align:center; padding:2rem; color:var(--text-muted)">載入失敗：' + err.message + '<br><small>請確認 WEB_APP_URL 正確，且 GAS 已部署為「所有人可存取」</small></div>';
+        document.getElementById('result-count').innerHTML = '<i class="fa-solid fa-list-ul"></i> 載入失敗';
+      });
+  }
+
+  function onDataLoaded(data) {
+    if (!data || data.error) {
+      document.getElementById('list').innerHTML =
+        '<div style="text-align:center; padding:2rem; color:var(--text-muted)">無法載入資料' +
+        (data && data.error ? '：' + data.error : '') + '</div>';
+      return;
+    }
+
+    userRole = data.userRole || 'visitor';
+    isRestricted = userRole !== 'pro';
+
+    rawData.general = preprocess(data.general || []);
+    rawData.special = preprocess(data.special || []);
+
+    if (data.userEmail) {
+      document.getElementById('user-zone').innerHTML =
+        '<div style="text-align:right">' +
+          '<div style="font-size:0.7rem; font-weight:800; color:var(--accent)">' + userRole.toUpperCase() + ' 會員</div>' +
+          '<div style="font-size:0.6rem; color:rgba(255,255,255,0.7); max-width:160px; overflow:hidden; text-overflow:ellipsis">' + data.userEmail + '</div>' +
+        '</div>' +
+        '<button class="btn-login" onclick="openLoginModal()"><i class="fa-solid fa-pen-to-square"></i></button>';
+    } else {
+      document.getElementById('user-zone').innerHTML =
+        '<button class="btn-login" onclick="openLoginModal()"><i class="fa-solid fa-user"></i> 訪客模式</button>';
+    }
+
+    document.getElementById('t-gen').querySelector('.count-badge').innerText = rawData.general.length;
+    document.getElementById('t-buy').querySelector('.count-badge').innerText = rawData.special.length;
+
+    initCounty();
+    render();
+  }
+
+  function preprocess(arr) {
+    return arr.map(function(item) {
+      return Object.assign({}, item, {
+        comp:     Number(item.estimated_comp) || 0,
+        roi:      Number(item.roi) || 0,
+        numPrice: Number(item.base_price) || 0,
+      });
+    });
+  }
+
+  function render() {
+    var fCounty = document.getElementById('f-county').value;
+    var fKey = document.getElementById('f-key').value.trim().toLowerCase();
+    var fSort = document.getElementById('f-sort').value;
+
+    var list = (rawData[currentTab] || []).filter(function(item) {
+      if (fCounty !== 'ALL' && item.county !== fCounty) return false;
+      if (fKey && !(item.address || '').toLowerCase().includes(fKey)) return false;
+      return true;
+    });
+
+    list.sort(function(a, b) { return fSort === 'roiDesc' ? b.roi - a.roi : a.numPrice - b.numPrice; });
+
+    document.getElementById('result-count').innerHTML = '<i class="fa-solid fa-list-ul"></i> 搜尋結果：' + list.length + ' 筆';
+
+    var container = document.getElementById('list');
+    if (list.length === 0) {
+      container.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--text-muted)">尚無符合條件的標案</div>';
+    } else {
+      container.innerHTML = list.map(function(item) {
+        var roiColor = item.roi >= 100 ? '#e11d48' : (item.roi >= 50 ? '#d97706' : '#64748b');
+        var addrSafe = (item.address || '').replace(/'/g, '&#39;');
+        return '<div class="item">' +
+          '<div class="card-top">' +
+            '<div class="county-tag">' + (item.county || '') + '</div>' +
+            '<div class="roi-badge">' +
+              '<span class="roi-num" style="color:' + roiColor + '">' + item.roi.toFixed(1) + '%</span>' +
+              '<div class="roi-lbl" style="color:' + roiColor + '">ROI 報酬率</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="font-size:0.75rem; font-weight:700; color:var(--text-muted)">' + (item.court_name || '') + ' ' + (item.sale_type || '') + '</div>' +
+          '<div class="addr-area" onclick="copy(\'' + addrSafe + '\')">' +
+            '<div class="addr-main">' + (item.address || '') + '</div>' +
+            '<div class="tags-row">' +
+              '<span class="tag ' + (item.is_handover ? 'tag-handover' : 'tag-no-handover') + '">' + (item.is_handover ? '點交' : '不點交') + '</span>' +
+              (item.is_empty_land ? '<span class="tag tag-empty">空地</span>' : '') +
+              '<span class="tag tag-date"><i class="fa-regular fa-calendar"></i> ' + (item.sale_date || '未定') + '</span>' +
+            '</div>' +
+            '<div class="area-sub"><i class="fa-solid fa-ruler-combined"></i> ' + (item.area_display || '') + '</div>' +
+          '</div>' +
+          '<div class="price-grid">' +
+            '<div class="price-box"><div class="p-lbl">拍賣底價</div><div class="p-val" style="color:var(--danger)">$' + item.numPrice.toLocaleString() + '</div></div>' +
+            '<div class="price-box"><div class="p-lbl">預估補償金</div><div class="p-val" style="color:var(--accent)">$' + item.comp.toLocaleString() + '</div></div>' +
+          '</div>' +
+          (item.pdf_url ? '<a href="' + item.pdf_url + '" target="_blank" class="btn-pdf">查看官方公告 <i class="fa-solid fa-arrow-up-right-from-square"></i></a>' : '') +
+        '</div>';
+      }).join('');
+    }
+
+    if (isRestricted) {
+      var title = '發現更多高回報物件';
+      var desc = '目前的 [訪客] 模式僅能預覽 3 筆案件。請輸入您的 Email 帳號以查看更多資料。';
+      if (userRole === 'free') {
+        title = '取得全台完整投資數據';
+        desc = '您目前已登入 [普通會員]，可預覽 10 筆案件。升級專業版即可解鎖全台完整案件與精確計算。';
+      }
+      container.innerHTML +=
+        '<div class="paywall-card">' +
+          '<h3>' + title + '</h3>' +
+          '<p>' + desc + '</p>' +
+          '<div style="font-weight:800; color:var(--secondary)">請聯繫管理員開通專業版權限</div>' +
+          '<small style="opacity:0.8">掌握資訊領先權，精準投標獲利</small>' +
+        '</div>';
+    }
+  }
+
+  function initCounty() {
+    var all = rawData.general.concat(rawData.special);
+    var counties = all.map(function(d) { return d.county; }).filter(Boolean);
+    counties = counties.filter(function(v, i, a) { return a.indexOf(v) === i; }).sort();
+    var select = document.getElementById('f-county');
+    select.innerHTML = '<option value="ALL">全部縣市</option>';
+    counties.forEach(function(c) { select.add(new Option(c, c)); });
+  }
+
+  function tab(t) {
+    currentTab = t;
+    document.getElementById('t-gen').classList.toggle('active', t === 'general');
+    document.getElementById('t-buy').classList.toggle('active', t === 'special');
+    render();
+  }
+
+  function copy(t) {
+    navigator.clipboard.writeText(t);
+    document.getElementById('toast').style.opacity = 1;
+    setTimeout(function() { document.getElementById('toast').style.opacity = 0; }, 2000);
+  }
+
+  function openLoginModal() {
+    document.getElementById('login-email').value = userEmail;
+    document.getElementById('login-modal').style.display = 'flex';
+  }
+
+  function closeLoginModal() {
+    document.getElementById('login-modal').style.display = 'none';
+  }
+
+  function submitEmail() {
+    var input = document.getElementById('login-email').value.trim();
+    if (input && input.includes('@')) {
+      userEmail = input;
+      localStorage.setItem('auction_email', userEmail);
+    } else {
+      userEmail = '';
+      localStorage.removeItem('auction_email');
+    }
+    closeLoginModal();
+    renderSkeleton();
+    loadData();
+  }
+
+  document.getElementById('login-email').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitEmail();
+  });
+
+  var renderTimer;
+  function debounceRender() { clearTimeout(renderTimer); renderTimer = setTimeout(render, 300); }
+</script>
+</body>
+</html>
