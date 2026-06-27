@@ -47,7 +47,7 @@ function scrapeLandStableBatch_Buy() {
   try {
     const url = "https://aomp109.judicial.gov.tw/judbp/wkw/WHD1A02/QUERY.htm";
     // 🔴 修正：根據使用者資料，精確設定 40 個鄉鎮市關鍵字
-    const searchKeywords = "大同鄉 南澳鄉 員山鄉 復興區 尖石鄉 五峰鄉 橫山鄉 關西鎮 泰安鄉 南庄鄉 獅潭鄉 和平區 仁愛鄉 信義鄉 魚池鄉 水里鄉 阿里山鄉 桃源區 那瑪夏區 獅子鄉 三地門鄉 牡丹鄉 來義鄉 泰武鄉 瑪家鄉 春日鄉 滿州鄉 內埔鄉 秀林鄉 卓溪鄉 萬榮鄉 壽豐鄉 光復鄉 富里鄉 豐濱鄉 吉安鄉 鳳林鎮 玉里鎮 瑞穗鄉 花蓮市 六龜區 新埤鄉 車城鄉 新城鄉";
+    var searchKeywords = CONST_KEYWORDS;
 
     let allFetchedData = [];
     let currentPage = 1;
@@ -168,5 +168,6 @@ function scrapeLandStableBatch_Buy() {
 
   } catch (e) {
     Logger.log("❌ 執行應買發生錯誤: " + e.message);
+    notifyError("應買清單抓取失敗", e, {step: "scrapeBuy"});
   }
 }

@@ -16,6 +16,12 @@ function refreshSession() {
     configSheet.setColumnWidth(2, 500);
   }
 
+  // 確保通知信箱設定存在
+  if (!configSheet.getRange("A4").getValue()) {
+    configSheet.getRange("A4:B4").setValues([["通知信箱", "rock90340@gmail.com"]]);
+    configSheet.getRange("A4").setFontWeight("bold").setBackground("#f3f3f3");
+  }
+
   Logger.log("🔄 正在嘗試從司法院網站獲取最新憑證...");
 
   try {
@@ -71,6 +77,7 @@ function refreshSession() {
 
   } catch (e) {
     Logger.log("❌ 獲取憑證時發生錯誤: " + e.message);
+    notifyError("Session 更新失敗", e, {step: "refreshSession"});
     return false;
   }
 }
@@ -117,7 +124,7 @@ function scrapeLandStableBatch_General() {
   try {
     const url = "https://aomp109.judicial.gov.tw/judbp/wkw/WHD1A02/QUERY.htm";
     // 🔴 修正：根據使用者資料，精確設定 40 個鄉鎮市關鍵字
-    const searchKeywords = "大同鄉 南澳鄉 員山鄉 復興區 尖石鄉 五峰鄉 橫山鄉 關西鎮 泰安鄉 南庄鄉 獅潭鄉 和平區 仁愛鄉 信義鄉 魚池鄉 水里鄉 阿里山鄉 桃源區 那瑪夏區 獅子鄉 三地門鄉 牡丹鄉 來義鄉 泰武鄉 瑪家鄉 春日鄉 滿州鄉 內埔鄉 秀林鄉 卓溪鄉 萬榮鄉 壽豐鄉 光復鄉 富里鄉 豐濱鄉 吉安鄉 鳳林鎮 玉里鎮 瑞穗鄉 花蓮市 六龜區 新埤鄉 車城鄉 新城鄉";
+    var searchKeywords = CONST_KEYWORDS;
 
     let allFetchedData = [];
     let currentPage = 1;
@@ -182,13 +189,13 @@ function scrapeLandStableBatch_General() {
       const uniqueData = new Map();
 
       allFetchedData.forEach(item => {
-        // 🔴 修正：過濾權利範圍
+        // 過濾權利範圍：僅保留全部
         const share = (item.rrange || "").trim();
-        if (share && share !== "全部" && share !== "1分之1") return;
+        if (share !== "全部") return;
 
-        // 🔴 修正：僅保留一般程序常見拍次 (1, 2, 3, 4, 6) 並過濾過期案件
+        // 僅保留一般程序拍次 (1, 2, 3) 並過濾過期案件
         const saleno = String(item.saleno || "");
-        if (!["1", "2", "3", "4", "6"].includes(saleno)) return;
+        if (!["1", "2", "3"].includes(saleno)) return;
         
         const saleDate = String(item.saledate || "0").padStart(8, '0');
         if (saleDate < todayROC) return;
@@ -257,6 +264,7 @@ function scrapeLandStableBatch_General() {
     }
   } catch (e) {
     Logger.log("❌ 執行一般清單錯誤: " + e.message);
+    notifyError("一般清單抓取失敗", e, {step: "scrapeGeneral"});
   }
 }
 
