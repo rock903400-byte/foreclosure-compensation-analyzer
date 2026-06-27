@@ -44,6 +44,21 @@ const CACHE_TTL = 5 * 60;
 // ─── 入口點（JSON API，供 GitHub Pages 前端跨網域呼叫）────────────────────────
 function doGet(e) {
   const params = (e && e.parameter) ? e.parameter : {};
+
+  // Debug mode
+  if (params.debug === '1') {
+    try {
+      const result = debugFilterCounts(params.saletype);
+      return ContentService
+        .createTextOutput(JSON.stringify(result))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (err) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ error: err.message, stack: err.stack || '' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   const email = params.email ? params.email.trim() : '';
   const role = email ? checkUserRole(email) : 'visitor';
 

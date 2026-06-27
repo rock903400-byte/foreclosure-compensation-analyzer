@@ -143,7 +143,7 @@ function scrapeLandStableBatch_General() {
       Logger.log("📄 正在抓取第 " + currentPage + " 頁...");
       const payload = {
         "proptype": "C51",
-        "saletype": "", 
+        "saletype": "1", 
         "keyword": searchKeywords,
         "rrange": "ALL",
         "pageSize": pageSize.toString(),
@@ -193,10 +193,6 @@ function scrapeLandStableBatch_General() {
         const share = (item.rrange || "").trim();
         if (share !== "全部") return;
 
-        // 僅保留一般程序拍次 (1, 2, 3) 並過濾過期案件
-        const saleno = String(item.saleno || "");
-        if (!["1", "2", "3"].includes(saleno)) return;
-        
         const saleDate = String(item.saledate || "0").padStart(8, '0');
         if (saleDate < todayROC) return;
 
@@ -209,16 +205,19 @@ function scrapeLandStableBatch_General() {
       });
 
       const filteredData = Array.from(uniqueData.values());
-      Logger.log("🧹 篩選後總筆數: " + filteredData.length + " 筆 (應接近 268 筆)");
+      Logger.log("🧹 篩選後總筆數: " + filteredData.length + " 筆 (應接近 277 筆)");
 
       // 拍次映射表
       const saleTypeMap = {
         "1": "第一拍",
         "2": "第二拍",
         "3": "第三拍",
-        "4": "應買",
-        "5": "特別程序",
-        "6": "特別程序(二)",
+        "4": "第四拍",
+        "5": "第五拍",
+        "6": "第六拍",
+        "7": "第七拍",
+        "8": "第八拍",
+        "9": "第九拍",
         "99": "公告"
       };
 
@@ -239,7 +238,7 @@ function scrapeLandStableBatch_General() {
         return [
           index + 1, item.hsimun + "地方法院", item.crmyy + "年" + item.crmid + "字第" + item.crmno + "號",
           "(" + (item.dpt || "") + "股)", item.saledate,
-          item.saletitle || saleTypeMap[item.saleno] || "一般程序",
+          saleTypeMap[item.saleno] || "一般程序",
           item.hsimun,
           '=HYPERLINK("' + mapUrl + '", "' + fullLocation + '")',
           areaDisplay, totalSum,
@@ -315,5 +314,181 @@ function runAllUpdate() {
   } else {
     SpreadsheetApp.getUi().alert("自動獲取憑證失敗，請檢查網路連線。");
   }
+}
+
+// ─── Debug: 逐層計算過濾筆數 ─────────────────────────────────────────────────
+function debugFilterCounts(saletypeOverride) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const configSheet = ss.getSheetByName("設定(驗證資訊)");
+  if (!configSheet) { Logger.log("找不到設定表"); return; }
+
+  const cookie = configSheet.getRange("B1").getValue().toString().trim();
+  const csrf = configSheet.getRange("B2").getValue().toString().trim();
+  const token = configSheet.getRange("B3").getValue().toString().trim();
+
+  const url = "https://aomp109.judicial.gov.tw/judbp/wkw/WHD1A02/QUERY.htm";
+  const allResults = [];
+  var page = 1;
+  const pageSize = 100;
+  var totalRecords = 0;
+  var saletypeVal = saletypeOverride || "1";
+
+  do {
+    try {
+      var payload = {
+        proptype: "C51", saletype: saletypeVal, keyword: CONST_KEYWORDS,
+        rrange: "ALL", pageSize: String(pageSize), page: String(page),
+        token: token, _csrf: csrf,
+        sorted_column: "A.CRMYY, A.CRMID, A.CRMNO, A.SALENO, A.ROWID",
+        sorted_type: "ASC", is_search: "Y"
+      };
+      var response = UrlFetchApp.fetch(url, {
+        muteHttpExceptions: true,
+        method: "post",
+        headers: {
+          Cookie: cookie,
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Referer": "https://aomp109.judicial.gov.tw/judbp/wkw/WHD1A02/V2.htm",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        payload: payload
+      });
+      var content = response.getContentText();
+      var json = JSON.parse(content);
+      if (json && json.data) {
+        for (var j = 0; j < json.data.length; j++) {
+          allResults.push(json.data[j]);
+        }
+        if (page === 1) totalRecords = parseInt(json.total || 0, 10);
+        Logger.log("Page " + page + ": " + json.data.length + " (累計 " + allResults.length + "/" + totalRecords + ")");
+        if (json.data.length < pageSize) break;
+      } else { break; }
+    } catch (fetchErr) {
+      Logger.log("Page " + page + " 錯誤: " + fetchErr.message);
+      break;
+    }
+    page++;
+    Utilities.sleep(300);
+  } while (allResults.length < totalRecords);
+
+  Logger.log("===== 原始筆數 =====");
+  Logger.log("總計: " + allResults.length);
+  if (allResults.length === 0) { Logger.log("可能原因: Cookie/CSRF/Token 過期或司法院網站改版"); }
+
+  const now = new Date();
+  var rocYear = (now.getFullYear() - 1911).toString();
+  var mm = (now.getMonth()+1).toString().padStart(2,'0');
+  var dd = now.getDate().toString().padStart(2,'0');
+  var todayROC = "0" + rocYear + mm + dd;
+
+  var cnt_share = 0;
+  var cnt_saleno_123 = 0, cnt_saleno_4 = 0, cnt_saleno_56 = 0, cnt_saleno_99 = 0;
+  var cnt_saleno_12346 = 0;
+  var cnt_date = 0, cnt_dedup = 0;
+  var dedupSet = {};
+  var saletitleDist = {};
+
+  if (allResults.length > 0) {
+    Logger.log("===== 第1筆原始資料欄位 =====");
+    var first = allResults[0];
+    for (var key in first) {
+      Logger.log("  " + key + "=" + first[key]);
+    }
+  }
+  var firstFields = allResults.length > 0 ? Object.keys(allResults[0]) : [];
+  var paraBySaleno = {};
+  for (var si = 0; si < allResults.length; si++) {
+    var sr = allResults[si];
+    var s = String(sr.saleno || "");
+    if (!paraBySaleno[s]) paraBySaleno[s] = {};
+    var paraPrefix = (sr.para || "").split("|")[0];
+    if (!paraBySaleno[s][paraPrefix]) paraBySaleno[s][paraPrefix] = 0;
+    paraBySaleno[s][paraPrefix]++;
+  }
+  var cnt_saleno_5 = 0, cnt_saleno_6 = 0, cnt_saleno_7 = 0, cnt_saleno_8 = 0, cnt_saleno_9 = 0;
+  var cnt_saleno_other = 0;
+
+  for (var i = 0; i < allResults.length; i++) {
+    var item = allResults[i];
+    var share = (item.rrange || "").trim();
+    if (share !== "全部") continue;
+    cnt_share++;
+
+    var saleno = String(item.saleno || "");
+    if (saleno === "1" || saleno === "2" || saleno === "3") cnt_saleno_123++;
+    else if (saleno === "4") cnt_saleno_4++;
+    else if (saleno === "5") cnt_saleno_5++;
+    else if (saleno === "6") cnt_saleno_6++;
+    else if (saleno === "7") cnt_saleno_7++;
+    else if (saleno === "8") cnt_saleno_8++;
+    else if (saleno === "9") cnt_saleno_9++;
+    else if (saleno === "99") cnt_saleno_99++;
+    else cnt_saleno_other++;
+
+    var st = (item.saletitle || "").trim() || "(空白)";
+    if (!saletitleDist[st]) saletitleDist[st] = 0;
+    saletitleDist[st]++;
+
+    if (saleno !== "1" && saleno !== "2" && saleno !== "3" && saleno !== "4" && saleno !== "6") continue;
+    cnt_saleno_12346++;
+
+    var saleDate = String(item.saledate || "0").padStart(8,'0');
+    if (saleDate < todayROC) continue;
+    cnt_date++;
+
+    var key = item.hsimun + item.crmyy + item.crmid + item.crmno + (item.saleno||"") + (item.batchno||"") + (item.sec||"") + (item.landno||"");
+    if (!dedupSet[key]) { dedupSet[key] = true; cnt_dedup++; }
+  }
+
+  Logger.log("===== 原始 API 總計 =====");
+  Logger.log("總筆數: " + allResults.length);
+  Logger.log("===== 篩選 權利範圍=全部 =====");
+  Logger.log("通過: " + cnt_share + " (移除: " + (allResults.length-cnt_share) + ")");
+  Logger.log("===== 各拍次分布 =====");
+  Logger.log("1/2/3 拍: " + cnt_saleno_123);
+  Logger.log("4: " + cnt_saleno_4);
+  Logger.log("5: " + cnt_saleno_5);
+  Logger.log("6: " + cnt_saleno_6);
+  Logger.log("7: " + cnt_saleno_7);
+  Logger.log("8: " + cnt_saleno_8);
+  Logger.log("9: " + cnt_saleno_9);
+  Logger.log("99 (公告): " + cnt_saleno_99);
+  Logger.log("其他: " + cnt_saleno_other);
+  Logger.log("===== saletitle 分布 =====");
+  for (var st in saletitleDist) {
+    Logger.log("  " + st + ": " + saletitleDist[st]);
+  }
+  Logger.log("===== 篩選 拍次 1/2/3/4/6 =====");
+  Logger.log("通過: " + cnt_saleno_12346 + " (移除: " + (cnt_share-cnt_saleno_12346) + ")");
+  Logger.log("===== 過濾過期 (today=" + todayROC + ") =====");
+  Logger.log("通過: " + cnt_date + " (移除: " + (cnt_saleno_12346-cnt_date) + ")");
+  Logger.log("===== 去重後 =====");
+  Logger.log("通過: " + cnt_dedup + " (移除: " + (cnt_date-cnt_dedup) + ")");
+
+  return {
+    raw_total: allResults.length,
+    after_share_all: cnt_share,
+    saleno_123: cnt_saleno_123,
+    saleno_4: cnt_saleno_4,
+    saleno_5: cnt_saleno_5,
+    saleno_6: cnt_saleno_6,
+    saleno_7: cnt_saleno_7,
+    saleno_8: cnt_saleno_8,
+    saleno_9: cnt_saleno_9,
+    saleno_99: cnt_saleno_99,
+    saleno_other: cnt_saleno_other,
+    after_saleno_12346: cnt_saleno_12346,
+    removed_by_share: allResults.length - cnt_share,
+    removed_by_saleno: cnt_share - cnt_saleno_12346,
+    after_date: cnt_date,
+    removed_by_date: cnt_saleno_12346 - cnt_date,
+    after_dedup: cnt_dedup,
+    removed_by_dedup: cnt_date - cnt_dedup,
+    today_roc: todayROC,
+    saletype_used: saletypeVal,
+    saletitle_dist: saletitleDist,
+    first_fields: firstFields,
+    para_by_saleno: paraBySaleno
+  };
 }
 
