@@ -1,4 +1,4 @@
-# auction
+# foreclosure-compensation-analyzer
 
 > 法拍補償 PRO 系統 (Foreclosure Compensation PRO) — 台灣法拍土地投資監控與分析系統
 

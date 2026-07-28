@@ -1,0 +1,25 @@
+# Data (sensitive)
+*.xls
+*.xlsx
+*.csv
+*.tsv
+*.dbf
+fetched_data.json
+*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Secrets / env
+.env*
+*.pem
+*.key
+*serviceAccount*.json
+
+# IDE
+.vscode/
+.idea/
