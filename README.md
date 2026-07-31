@@ -12,7 +12,7 @@
 ## 技術棧
 
 - **Production Backend**: Google Apps Script (GAS)
-- **Verification Tools**: Python (BeautifulSoup4, Pandas)
+- **Verification Tools**: Python (Requests, Pandas, Xlrd)
 - **Database / Sheets**: Google Sheets, Excel
 - **Frontend**: HTML / CSS
 
