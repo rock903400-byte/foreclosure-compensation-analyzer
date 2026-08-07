@@ -23,8 +23,8 @@
 
 ### 2. 執行 Python 數據驗證
 ```bash
-pip install -r requirements.txt
-python fetch_data.py
+pip install -r analysis/requirements.txt
+python analysis/fetch_data.py
 ```
 
 ## 專案結構
@@ -35,9 +35,12 @@ python fetch_data.py
 ├── 後端.gs             # API 處理與網頁路由
 ├── 法拍清單(一般).gs   # 一般法拍案件爬取
 ├── 法拍清單(應買).gs   # 應買法拍案件爬取
-├── fetch_data.py       # 本地法拍資料下載腳本
-├── analyze_*.py        # ROI 與案源數據分析工具
-└── verify_*.py         # 計算公式與數據一致性校驗
+├── index.html          # 前端（GitHub Pages 部署）
+└── analysis/           # 本地數據驗證與分析工具（Python）
+    ├── fetch_data.py   # 法拍資料下載腳本
+    ├── analyze_*.py    # ROI 與案源數據分析工具
+    ├── verify_*.py     # 計算公式與數據一致性校驗
+    └── requirements.txt # Python 依賴
 ```
 
 ## License

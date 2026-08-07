@@ -56,10 +56,10 @@ Google Sheet 需有工作表：`法拍清單(一般)`、`法拍清單(應買)`�
 ## 開發命令
 
 ```bash
-black .                     # format
-ruff check . --fix          # lint auto-fix
-ruff check .                # lint check
-python test_100_users.py    # mock 測試（不需外部服務）
+cd analysis && black .                     # format
+cd analysis && ruff check . --fix          # lint auto-fix
+cd analysis && ruff check .                # lint check
+python analysis/test_100_users.py          # mock 測試（不需外部服務）
 ```
 
 執行順序：`black → ruff check . --fix → ruff check . → python test_100_users.py`
