@@ -1,5 +1,8 @@
 # foreclosure-compensation-analyzer
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Pages](https://img.shields.io/badge/Demo-Light3-brightgreen.svg)](https://rock903400-byte.github.io/foreclosure-compensation-analyzer/)
+
 > 法拍補償 PRO 系統 (Foreclosure Compensation PRO) — 台灣法拍土地投資監控與分析系統
 
 ## 功能特色
