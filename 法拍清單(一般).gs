@@ -32,12 +32,31 @@ function refreshSession() {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
       },
-      "muteHttpExceptions": true
+      "muteHttpExceptions": true,
+      "followRedirects": true
     };
 
-    const response = UrlFetchApp.fetch(url, options);
+    // 2026/10/09 修正：GAS 對司法院偶發 "Address unavailable"，加上重試避免單次瞬斷就整批跳過
+    const MAX_ATTEMPTS = 3;
+    let response = null;
+    let lastFetchErr = null;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        Logger.log("🔄 refreshSession 第 " + attempt + "/" + MAX_ATTEMPTS + " 次嘗試...");
+        response = UrlFetchApp.fetch(url, options);
+        lastFetchErr = null;
+        break;
+      } catch (fetchErr) {
+        lastFetchErr = fetchErr;
+        Logger.log("⚠️ 第 " + attempt + " 次 fetch 失敗: " + fetchErr.message);
+        if (attempt < MAX_ATTEMPTS) Utilities.sleep(2000 * attempt);
+      }
+    }
+    if (!response) throw lastFetchErr;
+
     const content = response.getContentText();
     const headers = response.getAllHeaders();
+    Logger.log("📥 V2.htm 回應碼: " + response.getResponseCode() + "，內容長度: " + content.length);
 
     // 2. 獲取 Cookie (處理 Set-Cookie 陣列或字串)
     let cookie = "";
@@ -71,7 +90,7 @@ function refreshSession() {
       Logger.log("Token: " + token);
       return true;
     } else {
-      Logger.log("❌ 無法解析憑證。可能是頁面結構改變或被阻擋。");
+      Logger.log("❌ 無法解析憑證。可能是頁面結構改變或被阻擋。csrf=" + (csrf ? "OK" : "空") + " token=" + (token ? "OK" : "空") + " 內容前500字=" + content.substring(0, 500));
       return false;
     }
 
@@ -312,7 +331,21 @@ function runAllUpdate() {
     }
     Logger.log("✨ 所有清單更新完成！");
   } else {
-    SpreadsheetApp.getUi().alert("自動獲取憑證失敗，請檢查網路連線。");
+    // 與線上部署同步：憑證失敗時寄通知（對應 "[法拍PRO] refreshSession 失敗 / runAllUpdate 無法取得憑證"），
+    // 舊憑證保留在 設定(驗證資訊) B1-B3，本次跳過抓取不清空舊表。
+    var msg = "runAllUpdate 無法取得憑證";
+    Logger.log("❌ " + msg + "，保留舊憑證，已跳過本次抓取。");
+    try {
+      notifyError("refreshSession 失敗", new Error(msg), {step: "runAllUpdate"});
+    } catch (e2) {
+      Logger.log("notify 失敗: " + e2.message);
+    }
+    // 時間觸發器下沒有 UI，必須 try/catch，否則會再丟 "Cannot call SpreadsheetApp.getUi() from this context"
+    try {
+      SpreadsheetApp.getUi().alert("自動獲取憑證失敗，請檢查網路連線。");
+    } catch (uiErr) {
+      Logger.log("無 UI 環境，略過 alert: " + uiErr.message);
+    }
   }
 }
 
