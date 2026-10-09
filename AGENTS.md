@@ -39,7 +39,10 @@ live_site.html      → 前端模板（WIP, WEB_APP_URL 留空）
 
 ## 錯誤通知
 
-三處觸發（上下文 step 名）：`refreshSession`、`scrapeGeneral`、`scrapeBuy`
+四處觸發（標題 / 上下文 step 名）：
+- `Session 更新失敗` / `refreshSession` → `refreshSession()` 內 `UrlFetchApp.fetch` 丟例外（含 3 次重試仍失敗）
+- `refreshSession 失敗` / `runAllUpdate` → `runAllUpdate()` 拿不到憑證，本次跳過抓取、舊表保留
+- `一般清單抓取失敗` / `scrapeGeneral`、`應買清單抓取失敗` / `scrapeBuy`
 通知信箱存放於「設定(驗證資訊)」B4，預設 fallback 至 `rock90340@gmail.com`
 
 ## 部署
@@ -63,6 +66,19 @@ python analysis/test_100_users.py          # mock 測試（不需外部服務）
 ```
 
 執行順序：`black → ruff check . --fix → ruff check . → python test_100_users.py`
+
+## 維運備忘（2026/10/09 事件紀錄）
+
+- `.clasp.json` 被 `*.json` 的 gitignore 排除、不進版控；換電腦後重綁：
+  `clasp setting scriptId <指令碼ID>`（GAS 專案設定內取得），首次 `push` 若顯示
+  `Skipping push` 改用 `clasp push --force`
+- 只改爬蟲（`法拍清單(*).gs`）時只需 `clasp push` + 手動跑 `runAllUpdate` 驗證，
+  不需 `clasp deploy`（Web App URL 不變）；有動 `後端.gs` 才需重新部署並同步版本號
+- 排程健康檢查：GAS「觸發條件」確認 `runAllUpdate` 時間觸發啟用中；
+  失敗信判讀：`Address unavailable` = GAS→司法院瞬斷（已有 3 次重試，連續失敗才需處理），
+  `無法解析憑證` = 司法院 V2.htm 改版（檢查 `_csrf` / `token` 的 regex）
+- 已知正常現象：API `QUERY.htm` 回傳 `total=0`（分頁靠單頁筆數 `< pageSize` 收尾）、
+  每日筆數浮動（277/138 只是歷史快照，到期下架屬正常）；`updatedAt` 以 Web App 快取重建時間為準
 
 ## 前端注意
 
